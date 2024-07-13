@@ -6,11 +6,12 @@ import fnmatch
 import json
 import time
 import sys
+import requests
 
 DIRECTORY = './'
+
 class CustomHandler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
-        # Override the translate_path method to change the root directory
         path = http.server.SimpleHTTPRequestHandler.translate_path(self, path)
         relpath = os.path.relpath(path, os.getcwd())
         fullpath = os.path.join('./', relpath)
@@ -34,24 +35,23 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
         elif parsed_path.path == '/list':
             query = urllib.parse.parse_qs(parsed_path.query)
             dir_path = query.get('dir', [''])[0]
-           
+
             resFile = []
-            resDir=[]
-            # Iterate directory
+            resDir = []
             for path in os.listdir(dir_path):
-                # check if current path is a file
                 if os.path.isfile(os.path.join(dir_path, path)):
                     resFile.append(path)
                 else:
                     resDir.append(path)
+
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.end_headers()
             response = {
-                "files":resFile, 
-                "dirs":resDir,
+                "files": resFile,
+                "dirs": resDir,
                 "status": "success"
-                }
+            }
             self.wfile.write(json.dumps(response).encode())
         else:
             super().do_GET()
@@ -67,121 +67,93 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
 
 Handler = CustomHandler
 
+# Function to start the server
 def start_server(port, directory):
     os.chdir(directory)
     with socketserver.TCPServer(("", port), Handler) as httpd:
         print(f"Serving HTTP on port {port}")
         httpd.serve_forever()
 
-import requests
-
+# Function to download a file from the server
 def download_file(file_path, server_url="http://localhost:8000"):
     try:
-        # Create the destination directory if it does not exist
-        print(file_path.split('/')[:-1])
         if not os.path.exists(DIRECTORY + "/".join(file_path.split('/')[:-1])):
-            os.makedirs(DIRECTORY+"/".join(file_path.split('/')[:-1]))
-        
-        # Construct the URL to download the file
+            os.makedirs(DIRECTORY + "/".join(file_path.split('/')[:-1]))
+
         url = f"{server_url}/{file_path}"
-        print('DownloadingFrom:',url)
-        # Send GET request to download the file
+        print('Downloading from:', url)
         response = requests.get(url, stream=True)
         response.raise_for_status()
-        
-        # Create the full local path for the downloaded file
-        print(DIRECTORY + file_path)
+
         local_filename = os.path.join(DIRECTORY + os.path.basename(file_path))
         print(local_filename)
-        # Write the file to the local path in chunks
         with open(local_filename, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
-                if chunk:  # Filter out keep-alive new chunks
+                if chunk:
                     f.write(chunk)
     except:
         print("Error downloading file:", file_path, file=sys.stderr)
 
+# Function to search for files on the server
 def search_files(server_url, pattern):
-
-    # Define the URL with the search pattern as a query parameter
     url = f"{server_url}/search?pattern={pattern}"
-    
-    # Make the GET request to the server
     response = requests.get(url)
-    
-    # Raise an exception if the request was unsuccessful
     response.raise_for_status()
-    
-    # Parse the JSON response
     search_results = response.json()
-    
-    # Check the status of the response
     if search_results['status'] == 'success':
         return search_results['results']
     else:
         print("Search failed:", search_results, file=sys.stderr)
         return []
 
+# Function to list files and directories on the server
 def ls_files(server_url, pattern):
-
-    # Define the URL with the search pattern as a query parameter
     url = f"{server_url}/list?dir={pattern}"
-    
-    # Make the GET request to the server
     response = requests.get(url)
-    
-    # Raise an exception if the request was unsuccessful
     response.raise_for_status()
-    
-    # Parse the JSON response
     search_results = response.json()
-    
-    # Check the status of the response
     if search_results['status'] == 'success':
         return search_results['dirs'], search_results['files']
     else:
         print("Execution failed:", search_results, file=sys.stderr)
-        return [],[]
+        return [], []
 
-def search (conn, pattern):
-   
+# Function to search for files across multiple servers
+def search(conn, pattern):
     success = False
     while not success:
         try:
             for u in conn.users:
                 search_results = []
-                # Search for files matching the pattern
                 search_results.append(search_files(f"http://{u.ip}:{u.port}", pattern))
                 print("Search results from:", f"http://{u.ip}:{u.port}")
-                print ("---------------")
+                print("---------------")
                 for result in search_results:
                     for r in result:
-                        print("⇒",u.name,'/', r)
-                print ("---------------\n\n")
+                        print("⇒", u.name, '/', r)
+                print("---------------\n\n")
             success = True
         except:
             print("Error searching for files. Reconnecting to bootstrap server...")
             time.sleep(5)
             conn.reconnect()
-       
     return search_results
 
-def ls (conn, path):
+# Function to list files and directories across multiple servers
+def ls(conn, path):
     con2 = conn
     success = False
     while not success:
         try:
             for u in con2.users:
-                # Search for files matching the pattern
                 dirs, files = ls_files(f"http://{u.ip}:{u.port}", path)
                 print("File list from:", f"http://{u.ip}:{u.port}{path}")
-                print ("---------------")
-            
+                print("---------------")
                 for r in dirs:
-                    print("Dir ⇒",u.name,'⇒', r)
+                    print("Dir ⇒", u.name, '⇒', r)
                 for r in files:
-                    print("File ⇒",u.name,'⇒', r)
-                print ("---------------\n\n")
+                    print("File ⇒", u.name, '⇒', r)
+                print("---------------\n\n")
             success = True
         except:
             print("Error searching for files. Reconnecting to bootstrap server...")
