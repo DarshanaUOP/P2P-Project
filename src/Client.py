@@ -1,7 +1,7 @@
 from bootstrap_server import BootstrapServerConnection
 import sys
 import time
-from ClientAPI import start_server, search
+from ClientAPI import start_server, search, ls
 import threading
 
 class Node:
@@ -29,20 +29,27 @@ def worker(node):
             path = sys.argv[6]
         print("File Server Started at port", node.port, ". Serving files from ", path)
         start_server(node.port, path)
-    except e:
-        print("Error starting file server")
-        print(e)
+    except:
+        print("Error starting file server", file=sys.stderr)
     
 
 def execute_command(command, t, conn):
-    args = command.split()
-    if args[0] == "exit":
-        t.join()
-        sys.exit(0)
-    elif args[0] == "search":
-        search(conn, args[1])
-    else:
-        print("Invalid command")
+    try:
+        args = command.split()
+        if args[0] == "exit":
+            t.join()
+            sys.exit(0)
+        elif args[0] == "search":
+            search(conn, args[1])
+        elif args[0] == "ls":
+            if len(args) == 1:
+                ls(conn, '.')
+            else:
+                ls(conn, args[1])
+        else:
+            print("Invalid command")
+    except:
+        print("Error executing command", file=sys.stderr)
 
 def ux(t,conn):
     print('\n\n-----------------------------------------')
@@ -64,5 +71,5 @@ if __name__ == "__main__":
     conn = connect_to_bootstrap_server(bs_node, my_node)
     print("Ready to serve files")
     ux(t,conn)
-    # t.join()
+    t.join()
 
