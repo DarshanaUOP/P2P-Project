@@ -1,7 +1,7 @@
 from bootstrap_server import BootstrapServerConnection
 import sys
 import time
-from ClientAPI import start_server, search, ls
+from ClientAPI import start_server, search, ls, download_file
 import threading
 
 class Node:
@@ -46,6 +46,13 @@ def execute_command(command, t, conn):
                 ls(conn, '.')
             else:
                 ls(conn, args[1])
+        elif args[0] == "fetch":
+            file_path=args[2]
+            serverUrl = "http://" +conn.users[0].ip + ":" + str(conn.users[0].port)
+            if(conn.users[0].name!= args[1]):
+                serverUrl = "http://" +conn.users[1].ip + ":" + str(conn.users[1].port)
+            print(serverUrl)
+            download_file(file_path, serverUrl)
         else:
             print("Invalid command")
     except:

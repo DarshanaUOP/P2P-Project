@@ -75,6 +75,32 @@ def start_server(port, directory):
 
 import requests
 
+def download_file(file_path, server_url="http://localhost:8000"):
+    try:
+        # Create the destination directory if it does not exist
+        print(file_path.split('/')[:-1])
+        if not os.path.exists(DIRECTORY + "/".join(file_path.split('/')[:-1])):
+            os.makedirs(DIRECTORY+"/".join(file_path.split('/')[:-1]))
+        
+        # Construct the URL to download the file
+        url = f"{server_url}/{file_path}"
+        print('DownloadingFrom:',url)
+        # Send GET request to download the file
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        
+        # Create the full local path for the downloaded file
+        print(DIRECTORY + file_path)
+        local_filename = os.path.join(DIRECTORY + os.path.basename(file_path))
+        print(local_filename)
+        # Write the file to the local path in chunks
+        with open(local_filename, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:  # Filter out keep-alive new chunks
+                    f.write(chunk)
+    except:
+        print("Error downloading file:", file_path, file=sys.stderr)
+
 def search_files(server_url, pattern):
 
     # Define the URL with the search pattern as a query parameter
