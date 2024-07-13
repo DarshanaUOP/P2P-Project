@@ -4,3 +4,5 @@ class Node:
         self.ip = ip
         self.port = port
         self.name = name
+    def __str__(self) -> str:
+        return f"{self.name} ({self.ip}:{self.port})"

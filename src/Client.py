@@ -12,4 +12,5 @@ if __name__ == "__main__":
     my_node = Node("127.0.0.1", 5000, "my_node")
     
     with BootstrapServerConnection(bs_node, my_node) as conn:
-        print("Connected users:", conn.users)
+        for u in conn.users:
+            print(str(u))

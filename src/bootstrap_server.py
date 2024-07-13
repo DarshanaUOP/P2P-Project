@@ -25,7 +25,7 @@ class BootstrapServerConnection:
         '''
         message = " " + message
         message = str((10000+len(message)+5))[1:] + message
-        return message
+        return message.encode()
 
     def connect_to_bs(self):
         '''
@@ -45,15 +45,13 @@ class BootstrapServerConnection:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self.bs.ip, self.bs.port))
         s.send(self.message_with_length(message))
-        data = s.recv(buffer_size)
+        data = s.recv(buffer_size).decode()
         s.close()
-        print(data)
         
         toks = data.split()
         
         if (len(toks) < 3):
             raise RuntimeError("Invalid message")
-        
         if (toks[1] != "REGOK"):
             raise RuntimeError("Registration failed")
         
@@ -66,7 +64,7 @@ class BootstrapServerConnection:
         elif (num == 1):
             return [Node(toks[3], int(toks[4]), toks[5])]
         else:
-            l = range(1, num+1)
+            l = list(range(1, num+1))
             shuffle(l)
             return [Node(toks[l[0]*3], int(toks[l[0]*3+1]), toks[l[0]*3+2]), Node(toks[l[1]*3], int(toks[l[1]*3+1]), toks[l[1]*3+2])]
         
@@ -88,9 +86,9 @@ class BootstrapServerConnection:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self.bs.ip, self.bs.port))
         s.send(self.message_with_length(message))
-        data = s.recv(buffer_size)
+      
+        data = s.recv(buffer_size).decode()
         s.close()
-        
         toks = data.split()
         if (toks[1] != "UNROK"):
             raise RuntimeError("Unreg failed")
