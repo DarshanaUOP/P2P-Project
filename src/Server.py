@@ -1,6 +1,18 @@
 import socket
 
+storage =  set()
 # Mock Server
+def add_peer(msg):
+    global storage
+    storage.add(" ".join(msg.split()[1:]))
+    return storage
+
+def get_peers(data):
+    global storage
+    requesting_peer = " ".join(data.split()[1:])
+    filtered = [peer for peer in storage if peer != requesting_peer]
+    return len(filtered), " ".join(list(filtered))
+
 def start_bootstrap_server(ip, port):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((ip, port))
@@ -13,7 +25,9 @@ def start_bootstrap_server(ip, port):
         print(f"Received data: `{data}`")
         
         if data.startswith("REG"):
-            response = "0020 REGOK 2 127.0.0.1 5001 node1 127.0.0.1 5002 node2"
+            add_peer(data)
+            peer_count, peers = get_peers(data)
+            response = "0020 REGOK " + str(peer_count) + " " + peers
         elif data.startswith("UNREG"):
             response = "0020 UNROK 0"
         else:

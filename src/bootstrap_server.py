@@ -11,6 +11,10 @@ class BootstrapServerConnection:
     def __enter__(self):
         self.users = self.connect_to_bs()
         return self
+    
+    def reconnect(self):
+        self.users = self.connect_to_bs()
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.unreg_from_bs()
