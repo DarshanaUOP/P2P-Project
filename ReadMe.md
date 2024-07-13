@@ -28,7 +28,7 @@ Command: ls <path>
 ```
 Command: fetch <user name> file path
 ```
-### Neibour Table
+### Neighbour Table
 ```
 Command: tb
 ```
