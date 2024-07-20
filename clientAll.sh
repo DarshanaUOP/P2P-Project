@@ -7,10 +7,10 @@ BOOTSTRAP_PORT=5555
 
 # Define unique parameters for each client
 CLIENTS=(
-  "127.0.0.1 6001 node1 ./FileSystem"
-  "0.0.0.0 6002 node2 ./FileSystem2"
-  "127.0.0.1 6003 node3 ./FileSystem"
-  "0.0.0.0 6004 node4 ./FileSystem2"
+  "127.0.0.1 6001 node1 ./drive1"
+  "0.0.0.0 6002 node2 ./drive2"
+  "127.0.0.1 6003 node3 ./drive3"
+  "0.0.0.0 6004 node4 ./drive4"
 )
 
 # Function to start client in a new terminal

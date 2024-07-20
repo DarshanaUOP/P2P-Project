@@ -6,10 +6,12 @@ import sys
 import threading
 import time
 from bootstrap_server import BootstrapServerConnection
-from utils import start_server, custom_print, encode_base64, decode_base64
+from utils import start_server, custom_print, encode_base64, custom_print_error, custom_print_success, decode_base64
 from ttypes import Node
 import requests
 
+# udp packe lifetime
+FORWARD_LIMIT = 3
 class Client:
     def __init__(self, bs_ip, bs_port, my_ip, my_port, my_name, servePath):
         self.bootstrap_node = Node(bs_ip, bs_port, "bootstrap")
@@ -26,33 +28,36 @@ class Client:
         self.udp_server_thread.start()
         self.command_thread.start()
 
-        self.hashMap = map(str, [str])
+        self.hashMap = dict()
 
-        custom_print("Ready to serve files")
+        custom_print_success("Ready to serve files")
+    def print_hashmap(self):
+        for key, value in self.hashMap.items():
+            custom_print(key, "║" , value)
 
     def connect_to_bootstrap_server(self, bs_node, my_node):
         with BootstrapServerConnection(bs_node, my_node) as conn:
             while len(conn.users) == 0:
-                custom_print("No other users connected")
+                custom_print_error("No other users connected")
                 time.sleep(5)
                 custom_print("Reconnecting to bootstrap server...")
                 conn.reconnect()
             custom_print("Connected users:", len(conn.users))
             for user in conn.users:
-                custom_print('⇒', str(user))
+                custom_print_success('⇒', str(user))
             return conn
 
     def __file_server_worker__(self):
         try:
-            custom_print("File Server Started at port", self.fileServerPort, ". Serving files from ", self.servePath)
+            custom_print_success("File Server Started at port", self.fileServerPort, ". Serving files from ", self.servePath)
             start_server(self.fileServerPort, self.servePath)
         except Exception as e:
-            custom_print("Error starting file server:", e, file=sys.stderr)
+            custom_print_error("Error starting file server:", e)
 
     def __udp_server_worker__(self):
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp_socket.bind((self.my_node.ip, self.my_node.port))
-        custom_print(f"UDP Server started on {self.my_node.ip}:{self.my_node.port}")
+        custom_print_success(f"UDP Server started on {self.my_node.ip}:{self.my_node.port}")
         while True:
             message, address = udp_socket.recvfrom(4096)
             if message:
@@ -62,6 +67,7 @@ class Client:
                 command_message = message[4:4 + length]
                 parsed_msg= command_message.split(' ')
                 if(parsed_msg[0] == "RES"):
+                    self.hashMap[parsed_msg[1]] = ' '.join(parsed_msg[2:])
                     custom_print(f"Received response: { ' '.join(parsed_msg[2:])}", "HASH:", parsed_msg[1])
                 else:
                     command, keyword, sender_ip, sender_port, count = command_message.split(' ', 4)
@@ -69,18 +75,16 @@ class Client:
 
     def handle_command(self, command, keyword, sender_ip, sender_port, udp_socket, count):
         try:
-            if command == "search" and count < 5:
+            if command == "search" and count < FORWARD_LIMIT:
                 responses = self.search_file(keyword)
                 if responses is None:
-                    self.resolvedMap.add(f"{keyword} {sender_ip} {sender_port}")
                     self.process_forward_command(f"search {keyword}".strip(), sender_ip, sender_port, count+1)
-                elif responses is not None:
-                    for response in responses:
-                        response_m = f"RES {response}"
-                        response_message = f"{len(response_m):04d}{response_m}"
-                        udp_socket.sendto(response_message.encode('utf-8'), (sender_ip, sender_port))
+                for response in responses:
+                    response_m = f"RES {response}"
+                    response_message = f"{len(response_m):04d}{response_m}"
+                    udp_socket.sendto(response_message.encode('utf-8'), (sender_ip, sender_port))
         except Exception as e:
-            custom_print("oops:", e, file=sys.stderr)
+            custom_print_error("oops:", e)
 
     def search_file(self, keyword):
         result = []
@@ -105,7 +109,7 @@ class Client:
 
     def __command_worker__(self):
         while True:
-            user_input = input("")
+            user_input = input("» ")
             if user_input.strip():
                 self.process_user_command(user_input.strip())
 
@@ -113,21 +117,29 @@ class Client:
         if(user_input == "help"):
             custom_print("Commands:")
             custom_print("search <keyword> - search for files with the keyword")
+            custom_print("download <hash> - download file with the hash")
+            custom_print("ls - list peer file infomations")
+            return
+        if(user_input == "ls"):
+            self.print_hashmap()
             return
         try:
             command, keyword = user_input.split(' ', 1)
-            if command == "search":   
+            if command.strip() == "search":   
                 keyword_encoded = encode_base64(keyword)
                 encoded_input = f"{command} {keyword_encoded}"
                 message = f"{len(encoded_input) + len(self.my_node.ip) + 10:04d}{encoded_input} {self.my_node.ip} {self.my_node.port} {2:03d}"
                 for user in self.connection.users:
                     self.send_command_to_peer(user, message)
-            if command == "download":
-                self.download_file(keyword)
+            elif command == "download":
+                if self.hashMap.get(keyword) is not None:
+                    self.download_file(self.hashMap[keyword])
+                else:
+                    custom_print_error("Invalid Hash Key, List hashes from 'ls' command")
             else:   
-                custom_print(f"Unknown command: {command}", keyword)
+                custom_print_error(f"Unknown command: {command}", keyword)
         except Exception as e:
-            custom_print("Error processing command:", e, file=sys.stderr)
+            custom_print_error("Error processing command:", e)
     
     
     def process_forward_command(self, user_input, ip, port, count):
@@ -158,12 +170,13 @@ class Client:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
+            custom_print_success("File downloaded successfully!")
         except Exception as e:
-            custom_print("Error downloading file:", e, file=sys.stderr)
+            custom_print_error("Error downloading file:", e)
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 7:
-        print("Usage: python3 Client.py <bootstrap_ip> <bootstrap_port> <node_ip> <node_port> <node_name> <serve_path>")
+        custom_print_error("Usage: python3 Client.py <bootstrap_ip> <bootstrap_port> <node_ip> <node_port> <node_name> <serve_path>")
         sys.exit(1)
     client = Client(sys.argv[1], int(sys.argv[2]), sys.argv[3], int(sys.argv[4]), sys.argv[5], sys.argv[6])

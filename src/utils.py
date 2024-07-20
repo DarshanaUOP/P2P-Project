@@ -18,11 +18,17 @@ Handler = CustomHandler
 def start_server(port, directory):
     os.chdir(directory)
     with socketserver.TCPServer(("", port), Handler) as httpd:
-        print(f"Serving HTTP on port {port}")
+        custom_print_success(f"Serving HTTP on port {port}")
         httpd.serve_forever()
 
 def custom_print(*message):
     print(*message)
+
+def custom_print_error(*message):
+    print("\033[31m×", *message, "\033[0m")
+
+def custom_print_success(*message):
+    print("\033[32m¤", *message, "\033[0m")
 
 def encode_base64(message=""):
     message_bytes = message.encode('ascii')
