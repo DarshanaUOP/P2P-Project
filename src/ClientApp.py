@@ -18,25 +18,24 @@ class Client:
         self.my_node = Node(my_ip, my_port, my_name)
         self.servePath = servePath
         self.fileServerPort = random.randint(5500, 6000)
-        self.connection = self.connect_to_bootstrap_server(self.bootstrap_node, self.my_node)
 
         self.file_server_thread = threading.Thread(target=self.__file_server_worker__, args=())
         self.udp_server_thread = threading.Thread(target=self.__udp_server_worker__, args=())
         self.command_thread = threading.Thread(target=self.__command_worker__, args=())
-
         self.file_server_thread.start()
         self.udp_server_thread.start()
         self.command_thread.start()
-
         self.hashMap = dict()
+        self.connection = BootstrapServerConnection(self.bootstrap_node, self.my_node)
+        self.connect_to_bootstrap_server()
 
         custom_print_success("Ready to serve files")
     def print_hashmap(self):
         for key, value in self.hashMap.items():
             custom_print(key, "║" , value)
 
-    def connect_to_bootstrap_server(self, bs_node, my_node):
-        with BootstrapServerConnection(bs_node, my_node) as conn:
+    def connect_to_bootstrap_server(self):
+        with self.connection as conn:
             while len(conn.users) == 0:
                 custom_print_error("No other users connected")
                 time.sleep(5)
@@ -45,7 +44,9 @@ class Client:
             custom_print("Connected users:", len(conn.users))
             for user in conn.users:
                 custom_print_success('⇒', str(user))
-            return conn
+            self.command_thread.join()
+            client.file_server_thread.join()
+            client.udp_server_thread.join()
 
     def __file_server_worker__(self):
         try:
@@ -77,14 +78,14 @@ class Client:
         try:
             if command == "search" and count < FORWARD_LIMIT:
                 responses = self.search_file(keyword)
-                if responses is None:
-                    self.process_forward_command(f"search {keyword}".strip(), sender_ip, sender_port, count+1)
-                for response in responses:
-                    response_m = f"RES {response}"
-                    response_message = f"{len(response_m):04d}{response_m}"
-                    udp_socket.sendto(response_message.encode('utf-8'), (sender_ip, sender_port))
+                self.process_forward_command(f"search {keyword}".strip(), sender_ip, sender_port, count+1)
+                if responses is not None:
+                    for response in responses:
+                        response_m = f"RES {response}"
+                        response_message = f"{len(response_m):04d}{response_m}"
+                        udp_socket.sendto(response_message.encode('utf-8'), (sender_ip, sender_port))
         except Exception as e:
-            custom_print_error("oops:", e)
+            custom_print_error("oops:", e, command, keyword)
 
     def search_file(self, keyword):
         result = []
@@ -119,6 +120,17 @@ class Client:
             custom_print("search <keyword> - search for files with the keyword")
             custom_print("download <hash> - download file with the hash")
             custom_print("ls - list peer file infomations")
+            custom_print("reset - chage peers (reset connection)")
+            custom_print("peers - list peers")
+            return
+        if(user_input == "reset"):
+            self.connection.reconnect()
+            for user in self.connection.users:
+                custom_print_success('*웃', str(user))
+            return
+        if(user_input == "peers"):
+            for user in self.connection.users:
+                custom_print_success('웃', str(user))
             return
         if(user_input == "ls"):
             self.print_hashmap()
@@ -154,7 +166,6 @@ class Client:
     def send_command_to_peer(self, peer, message):
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp_socket.sendto(message.encode('utf-8'), (peer.ip, peer.port))
-        custom_print(peer.ip, ':', peer.port, "->", message)
 
     def download_file(self, url):
         try:
