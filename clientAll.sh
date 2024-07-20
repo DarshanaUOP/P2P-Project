@@ -3,21 +3,22 @@
 # Define common parameters
 BOOTSTRAP_IP="127.0.0.1"
 BOOTSTRAP_PORT=5555
-NODE_IP="127.0.0.1"
+# NODE_IP="127.0.0.1"
 
 # Define unique parameters for each client
 CLIENTS=(
-  "6001 node1 ./FileSystem"
-  "6002 node2 ./FileSystem2"
-  "6003 node3 ./FileSystem"
-  "6004 node4 ./FileSystem2"
+  "127.0.0.1 6001 node1 ./FileSystem"
+  "0.0.0.0 6002 node2 ./FileSystem2"
+  "127.0.0.1 6003 node3 ./FileSystem"
+  "0.0.0.0 6004 node4 ./FileSystem2"
 )
 
 # Function to start client in a new terminal
 start_client() {
-  local NODE_PORT=$1
-  local NODE_NAME=$2
-  local SERVE_PATH=$3
+  local NODE_PORT=$2
+  local NODE_NAME=$3
+  local SERVE_PATH=$4
+  local NODE_IP=$1
   gnome-terminal -- bash -c "python3 src/ClientApp.py $BOOTSTRAP_IP $BOOTSTRAP_PORT $NODE_IP $NODE_PORT $NODE_NAME $SERVE_PATH; exec bash"
 }
 
