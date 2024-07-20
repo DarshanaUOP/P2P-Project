@@ -6,35 +6,9 @@ import sys
 import threading
 import time
 from bootstrap_server import BootstrapServerConnection
-from ClientAPI import start_server
-import base64 
-
-message = "Python is fun"
-message_bytes = message.encode('ascii')
-base64_bytes = base64.b64encode(message_bytes)
-base64_message = base64_bytes.decode('ascii')
-
-def custom_print(*message):
-    print(*message)
-
-def encode_base64(message=""):
-    message_bytes = message.encode('ascii')
-    base64_bytes = base64.b64encode(message_bytes)
-    base64_message = base64_bytes.decode('ascii')
-    return base64_message
-
-def decode_base64(base64_message=""):
-    base64_bytes = base64_message.encode('ascii')
-    message_bytes = base64.b64decode(base64_bytes)
-    message = message_bytes.decode('ascii')
-    return message
-
-class Node:
-    def __init__(self, ip, port, name):
-        self.ip = ip
-        self.port = port
-        self.name = name
-
+from utils import start_server, custom_print, encode_base64, decode_base64
+from ttypes import Node
+import requests
 
 class Client:
     def __init__(self, bs_ip, bs_port, my_ip, my_port, my_name, servePath):
@@ -52,7 +26,7 @@ class Client:
         self.udp_server_thread.start()
         self.command_thread.start()
 
-        self.resolvedMap = set([''])
+        self.hashMap = map(str, [str])
 
         custom_print("Ready to serve files")
 
@@ -90,26 +64,21 @@ class Client:
                 if(parsed_msg[0] == "RES"):
                     custom_print(f"Received response: { ' '.join(parsed_msg[2:])}", "HASH:", parsed_msg[1])
                 else:
-                    command, keyword, sender_ip, sender_port = command_message.split(' ', 3)
-                    self.handle_command(command,decode_base64(keyword), sender_ip, int(sender_port), udp_socket)
+                    command, keyword, sender_ip, sender_port, count = command_message.split(' ', 4)
+                    self.handle_command(command,decode_base64(keyword), sender_ip, int(sender_port), udp_socket, int(count))
 
-    def handle_command(self, command, keyword, sender_ip, sender_port, udp_socket):
+    def handle_command(self, command, keyword, sender_ip, sender_port, udp_socket, count):
         try:
-            if command == "search":
+            if command == "search" and count < 5:
                 responses = self.search_file(keyword)
-                if f"{keyword} {sender_ip} {sender_port}" not in self.resolvedMap and responses is None:
+                if responses is None:
                     self.resolvedMap.add(f"{keyword} {sender_ip} {sender_port}")
-                    self.process_forward_command(f"search {keyword}".strip(), sender_ip, sender_port)
+                    self.process_forward_command(f"search {keyword}".strip(), sender_ip, sender_port, count+1)
                 elif responses is not None:
                     for response in responses:
                         response_m = f"RES {response}"
                         response_message = f"{len(response_m):04d}{response_m}"
                         udp_socket.sendto(response_message.encode('utf-8'), (sender_ip, sender_port))
-
-                
-
-            else:
-                custom_print(f"Unknown command received: {command}")
         except Exception as e:
             custom_print("oops:", e, file=sys.stderr)
 
@@ -120,7 +89,7 @@ class Client:
                 if keyword in file:
                     file_path = os.path.join(root, file)
                     file_hash = self.generate_file_hash(file_path)
-                    file_url = f"http://{self.my_node.ip}:{self.fileServerPort}/{file}"
+                    file_url = f"http://{self.my_node.ip}:{self.fileServerPort}/{file_path[2:]}"
                     result.append(f"{file_hash} {file_url}")
         if len(result)>0:
             return result
@@ -150,20 +119,22 @@ class Client:
             if command == "search":   
                 keyword_encoded = encode_base64(keyword)
                 encoded_input = f"{command} {keyword_encoded}"
-                message = f"{len(encoded_input) + len(self.my_node.ip) + 6:04d}{encoded_input} {self.my_node.ip} {self.my_node.port}"
+                message = f"{len(encoded_input) + len(self.my_node.ip) + 10:04d}{encoded_input} {self.my_node.ip} {self.my_node.port} {2:03d}"
                 for user in self.connection.users:
                     self.send_command_to_peer(user, message)
+            if command == "download":
+                self.download_file(keyword)
             else:   
                 custom_print(f"Unknown command: {command}", keyword)
         except Exception as e:
-            print("Error processing command:", e, file=sys.stderr)
+            custom_print("Error processing command:", e, file=sys.stderr)
     
     
-    def process_forward_command(self, user_input, ip, port):
+    def process_forward_command(self, user_input, ip, port, count):
         command, keyword = user_input.split(' ', 1)
         keyword_encoded = encode_base64(keyword)
         encoded_input = f"{command} {keyword_encoded}"
-        message = f"{len(encoded_input) + len(ip) + 6:04d}{encoded_input} {ip} {port}"
+        message = f"{len(encoded_input) + len(ip) + 10:04d}{encoded_input} {ip} {port} {count:03d}"
         for user in self.connection.users:
             if user.port != port or user.ip != ip:   
                 self.send_command_to_peer(user, message)
@@ -172,6 +143,23 @@ class Client:
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp_socket.sendto(message.encode('utf-8'), (peer.ip, peer.port))
         custom_print(peer.ip, ':', peer.port, "->", message)
+
+    def download_file(self, url):
+        try:
+            print("Downloading file:", url.split('/',3)[-1])
+            file_path = os.path.join(url.split('/',3)[-1])
+            path_array = file_path.split('/')
+            dir_path = '/'.join(path_array[:-1])
+            if not os.path.exists(dir_path) and len(path_array) > 1:
+                os.makedirs('/'.join(path_array[:-1]))
+            response = requests.get(url, stream=True)
+            response.raise_for_status()
+            with open(file_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+        except Exception as e:
+            custom_print("Error downloading file:", e, file=sys.stderr)
 
 
 if __name__ == "__main__":

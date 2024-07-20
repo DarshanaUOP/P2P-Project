@@ -1,1 +1,0 @@
-python3 src/Client.py 127.0.0.1 5555  127.0.0.1 5001 Client1 ./FileSystem
