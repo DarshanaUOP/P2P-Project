@@ -22,9 +22,11 @@ class Client:
         self.file_server_thread = threading.Thread(target=self.__file_server_worker__, args=())
         self.udp_server_thread = threading.Thread(target=self.__udp_server_worker__, args=())
         self.command_thread = threading.Thread(target=self.__command_worker__, args=())
+        
         self.file_server_thread.start()
         self.udp_server_thread.start()
         self.command_thread.start()
+
         self.hashMap = dict()
         self.connection = BootstrapServerConnection(self.bootstrap_node, self.my_node)
         self.connect_to_bootstrap_server()
@@ -44,6 +46,7 @@ class Client:
             custom_print("Connected users:", len(conn.users))
             for user in conn.users:
                 custom_print_success('⇒', str(user))
+
             self.command_thread.join()
             client.file_server_thread.join()
             client.udp_server_thread.join()
@@ -122,6 +125,7 @@ class Client:
             custom_print("ls - list peer file infomations")
             custom_print("reset - chage peers (reset connection)")
             custom_print("peers - list peers")
+            custom_print("leave - leave the system")
             return
         if(user_input == "reset"):
             self.connection.reconnect()
@@ -134,6 +138,11 @@ class Client:
             return
         if(user_input == "ls"):
             self.print_hashmap()
+            return
+        if(user_input == "leave"):
+            custom_print("Leaving the system")
+            self.connection.unreg_from_bs()
+            custom_print_success("unregistered from server")
             return
         try:
             command, keyword = user_input.split(' ', 1)
