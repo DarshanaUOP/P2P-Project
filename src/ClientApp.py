@@ -146,17 +146,25 @@ class Client:
             return
         try:
             command, keyword = user_input.split(' ', 1)
-            if command.strip() == "search":   
+            if command.strip() == "search": 
+                start_time = time.time()
                 keyword_encoded = encode_base64(keyword)
                 encoded_input = f"{command} {keyword_encoded}"
                 message = f"{len(encoded_input) + len(self.my_node.ip) + 10:04d}{encoded_input} {self.my_node.ip} {self.my_node.port} {2:03d}"
                 for user in self.connection.users:
                     self.send_command_to_peer(user, message)
+                custom_print(f"elapsed time: {(time.time() - start_time)*1000:.2f} ms")
+
             elif command == "download":
+                start_time = time.time()
+                
                 if self.hashMap.get(keyword) is not None:
                     self.download_file(self.hashMap[keyword])
                 else:
                     custom_print_error("Invalid Hash Key, List hashes from 'ls' command")
+                
+                custom_print(f"elapsed time: {(time.time() - start_time)*1000:.2f} ms")
+
             else:   
                 custom_print_error(f"Unknown command: {command}", keyword)
         except Exception as e:
