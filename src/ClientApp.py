@@ -117,6 +117,14 @@ class Client:
             if user_input.strip():
                 self.process_user_command(user_input.strip())
 
+    @staticmethod
+    def format_download_speed(speed_bps):
+        units = [("B/s", 1), ("KB/s", 1024), ("MB/s", 1024 ** 2), ("GB/s", 1024 ** 3)]
+        for unit_name, unit_value in units:
+            if speed_bps < unit_value * 1024 or unit_name == "GB/s":
+                speed = speed_bps / unit_value
+                return f"{speed:.2f} {unit_name}"
+
     def process_user_command(self, user_input):
         if(user_input == "help"):
             custom_print("Commands:")
@@ -153,17 +161,21 @@ class Client:
                 message = f"{len(encoded_input) + len(self.my_node.ip) + 10:04d}{encoded_input} {self.my_node.ip} {self.my_node.port} {2:03d}"
                 for user in self.connection.users:
                     self.send_command_to_peer(user, message)
-                custom_print(f"elapsed time: {(time.time() - start_time)*1000:.2f} ms")
 
             elif command == "download":
                 start_time = time.time()
-                
+
                 if self.hashMap.get(keyword) is not None:
-                    self.download_file(self.hashMap[keyword])
+                    file_size = self.download_file(self.hashMap[keyword])
                 else:
                     custom_print_error("Invalid Hash Key, List hashes from 'ls' command")
                 
-                custom_print(f"elapsed time: {(time.time() - start_time)*1000:.2f} ms")
+                download_time = (time.time() - start_time)
+                download_speed_bytes_per_second = (file_size / download_time)
+                download_speed = self.format_download_speed(download_speed_bytes_per_second)
+
+                custom_print_success(f"elapsed time: {download_time*1000:.2f} ms")
+                custom_print_success("download speed: ",download_speed)
 
             else:   
                 custom_print_error(f"Unknown command: {command}", keyword)
@@ -183,9 +195,10 @@ class Client:
     def send_command_to_peer(self, peer, message):
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp_socket.sendto(message.encode('utf-8'), (peer.ip, peer.port))
-
+                
     def download_file(self, url):
         try:
+            total_file_size = 0
             print("Downloading file:", url.split('/',3)[-1])
             file_path = os.path.join(url.split('/',3)[-1])
             path_array = file_path.split('/')
@@ -198,7 +211,12 @@ class Client:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
+                        total_file_size += len(chunk)
+
             custom_print_success("File downloaded successfully!")
+            custom_print_success("File Size ",total_file_size,"byts")
+            return total_file_size
+
         except Exception as e:
             custom_print_error("Error downloading file:", e)
 
