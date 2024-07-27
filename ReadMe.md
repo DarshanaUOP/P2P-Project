@@ -36,3 +36,7 @@ Command: reset
 ```
 Command: help
 ```
+### Leave
+```
+Command: leave
+```
