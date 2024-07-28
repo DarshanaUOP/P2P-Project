@@ -162,6 +162,9 @@ class Client:
                 for user in self.connection.users:
                     self.send_command_to_peer(user, message)
 
+                elapsed_time = (time.time() - start_time)
+                custom_print_success(f"elapsed time: {elapsed_time*1000:.2f} ms")
+
             elif command == "download":
                 start_time = time.time()
 
