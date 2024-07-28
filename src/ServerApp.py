@@ -28,7 +28,7 @@ class Server:
     # Function to start the bootstrap server
     def start_bootstrap_server(self):
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind((self.ip, self.port))
+        server_socket.bind(('0.0.0.0', self.port))
         server_socket.listen(5)
         custom_print_success(f"Bootstrap server running on {self.ip}:{self.port}")
 
