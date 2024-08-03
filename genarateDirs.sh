@@ -12,7 +12,11 @@ NUM_DIRECTORIES=$1
 # Function to generate a random file with 1MB content
 generate_random_file() {
     FILENAME=$1
-    head -c 1M </dev/urandom >"$FILENAME"
+    MIN_SIZE=2M
+    MAX_SIZE=10M
+
+    SIZE=$(shuf -i 2-10 -n 1)M
+    head -c $SIZE </dev/urandom >"$FILENAME"
 }
 
 # Create directories and files
