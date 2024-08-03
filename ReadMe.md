@@ -20,6 +20,10 @@ Command: search <some file name or part>
 ```
 Command: ls <path>
 ```
+path:
+- r - remote
+- l - local
+
 ### Download Files
 ```
 Command: fetch <user name> file path

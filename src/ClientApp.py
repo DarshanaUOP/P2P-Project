@@ -32,9 +32,21 @@ class Client:
         self.connect_to_bootstrap_server()
 
         custom_print_success("Ready to serve files")
+
     def print_hashmap(self):
         for key, value in self.hashMap.items():
             custom_print(key, "║" , value)
+
+    def print_local_drive_content(self):
+        print("loacl files:")
+        path = self.servePath
+        try:
+            for root, dirs, files in os.walk("./"):
+                for file in files:
+                    custom_print("-", file)
+
+        except Exception as e:
+            custom_print_error("Error reading file server:", e)
 
     def connect_to_bootstrap_server(self):
         with self.connection as conn:
@@ -82,6 +94,7 @@ class Client:
             if command == "search" and count < FORWARD_LIMIT:
                 responses = self.search_file(keyword)
                 self.process_forward_command(f"search {keyword}".strip(), sender_ip, sender_port, count+1)
+                custom_print(response)
                 if responses is not None:
                     for response in responses:
                         response_m = f"RES {response}"
@@ -131,6 +144,7 @@ class Client:
             custom_print("search <keyword> - search for files with the keyword")
             custom_print("download <hash> - download file with the hash")
             custom_print("ls - list peer file infomations")
+            custom_print("lslocal - list peer file infomations")
             custom_print("reset - chage peers (reset connection)")
             custom_print("peers - list peers")
             custom_print("leave - leave the system")
@@ -144,8 +158,11 @@ class Client:
             for user in self.connection.users:
                 custom_print_success('웃', str(user))
             return
-        if(user_input == "ls"):
+        if(user_input == "ls r"):
             self.print_hashmap()
+            return
+        if(user_input == "ls l"):
+            self.print_local_drive_content()
             return
         if(user_input == "leave"):
             custom_print("Leaving the system")
