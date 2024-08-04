@@ -94,9 +94,9 @@ class Client:
             if command == "search" and count < FORWARD_LIMIT:
                 responses = self.search_file(keyword)
                 self.process_forward_command(f"search {keyword}".strip(), sender_ip, sender_port, count+1)
-                custom_print(response)
                 if responses is not None:
                     for response in responses:
+                        custom_print(response)
                         response_m = f"RES {response}"
                         response_message = f"{len(response_m):04d}{response_m}"
                         udp_socket.sendto(response_message.encode('utf-8'), (sender_ip, sender_port))
