@@ -1,5 +1,7 @@
 Read Me
 
+## Please note that we are using base 64 encoding to send file names and paths to avoid space issues
+
 Project Structure
 -----------------
 

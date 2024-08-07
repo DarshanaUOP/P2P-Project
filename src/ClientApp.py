@@ -80,25 +80,25 @@ class Client:
                 message = message.decode('utf-8')
                 length = int(message[:4])
                 # print(address, "<-", message)
-                command_message = message[4:4 + length]
+                command_message = message[5:5 + length]
                 parsed_msg= command_message.split(' ')
-                if(parsed_msg[0] == "RES"):
+                if(parsed_msg[0] == "SEROK"):
                     self.hashMap[parsed_msg[1]] = ' '.join(parsed_msg[2:])
                     custom_print(f"Received response: { ' '.join(parsed_msg[2:])}", "HASH:", parsed_msg[1])
                 else:
-                    command, keyword, sender_ip, sender_port, count = command_message.split(' ', 4)
+                    command, sender_ip, sender_port, keyword, count = command_message.split(' ', 4)
                     self.handle_command(command,decode_base64(keyword), sender_ip, int(sender_port), udp_socket, int(count))
 
     def handle_command(self, command, keyword, sender_ip, sender_port, udp_socket, count):
         try:
-            if command == "search" and count < FORWARD_LIMIT:
+            if command == "SER" and count < FORWARD_LIMIT:
                 responses = self.search_file(keyword)
-                self.process_forward_command(f"search {keyword}".strip(), sender_ip, sender_port, count+1)
+                self.process_forward_command("SER", keyword, sender_ip, sender_port, count+1)
                 if responses is not None:
                     for response in responses:
                         custom_print(response)
-                        response_m = f"RES {response}"
-                        response_message = f"{len(response_m):04d}{response_m}"
+                        response_m = f"SEROK {response}"
+                        response_message = f"{len(response_m):04d} {response_m}"
                         udp_socket.sendto(response_message.encode('utf-8'), (sender_ip, sender_port))
         except Exception as e:
             custom_print_error("oops:", e, command, keyword)
@@ -174,8 +174,9 @@ class Client:
             if command.strip() == "search": 
                 start_time = time.time()
                 keyword_encoded = encode_base64(keyword)
-                encoded_input = f"{command} {keyword_encoded}"
-                message = f"{len(encoded_input) + len(self.my_node.ip) + 10:04d}{encoded_input} {self.my_node.ip} {self.my_node.port} {2:03d}"
+                encoded_input = f"{keyword_encoded}"
+                cmd = "SER"
+                message = f"{len(encoded_input)+ len(cmd) + len(self.my_node.ip) + 10:04d} {cmd} {self.my_node.ip} {self.my_node.port} {encoded_input}  {2:03d}"
                 for user in self.connection.users:
                     self.send_command_to_peer(user, message)
 
@@ -203,11 +204,11 @@ class Client:
             custom_print_error("Error processing command:", e)
     
     
-    def process_forward_command(self, user_input, ip, port, count):
-        command, keyword = user_input.split(' ', 1)
+    def process_forward_command(self, command,keyword, ip, port, count):
+      
         keyword_encoded = encode_base64(keyword)
-        encoded_input = f"{command} {keyword_encoded}"
-        message = f"{len(encoded_input) + len(ip) + 10:04d}{encoded_input} {ip} {port} {count:03d}"
+        encoded_input = f"{command} {ip} {port} {keyword_encoded} {count:03d}"
+        message = f"{len(encoded_input):04d} {encoded_input}"
         for user in self.connection.users:
             if user.port != port or user.ip != ip:   
                 self.send_command_to_peer(user, message)
