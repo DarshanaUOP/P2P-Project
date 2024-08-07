@@ -1,5 +1,9 @@
 ## Start Server
 Boostrap server runs on port 5555
+
+
+![image](https://github.com/user-attachments/assets/6d919a41-c2b6-41fe-8e69-5d41d9cd0379)
+
 ```
  python3 Server.py 
 
@@ -28,7 +32,7 @@ path:
 ```
 Command: fetch <user name> file path
 ```
-### Neibour Table
+### Neighbour Table
 ```
 Command: tb
 ```
@@ -40,6 +44,7 @@ Command: reset
 ```
 Command: help
 ```
+
 ### Leave
 ```
 Command: leave
