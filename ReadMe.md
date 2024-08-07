@@ -30,11 +30,11 @@ path:
 
 ### Download Files
 ```
-Command: fetch <user name> file path
+Command: download <hash>
 ```
 ### Neighbour Table
 ```
-Command: tb
+Command: peers
 ```
 ### Change Neibour
 ```
