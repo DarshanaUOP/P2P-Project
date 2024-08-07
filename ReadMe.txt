@@ -38,4 +38,4 @@ _________
         ls r                - List ALl Files from remote files that searched (this contain hash and file name and node info)
         leave               - Leave the system
         reset               - Re join to the system (this changes connected nodes and bootstrap server give randomly picked 2 nodes)
-        peers               - list connected peers (Nodes)
+        peers               - list connected peers (Nodes) 
