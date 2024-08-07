@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vm
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: vm
+  template:
+    metadata:
+      labels:
+        app: vm
+    spec:
+      containers:
+      - name: vm
+        image: python:3.9-slim
+        command: ["/bin/bash", "-c", "apt-get update && apt-get install -y git && git clone https://github.com/rasika2012/P2P-Project.git /app/repo && cd /app/repo && pip install -r requirements.txt && tail -f /dev/null"]
