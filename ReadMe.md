@@ -1,6 +1,13 @@
+## Install Required Libraries
+`pip3 install requests`
+
+### Note: We have tested this on linux environment and MAC OS
+### You can use Client and Server shell script to start multiple applications
+### Random Files can be generated from generate shell script
+### Follow Instruction to Run the Program
+
 ## Start Server
 Boostrap server runs on port 5555
-
 
 ![image](https://github.com/user-attachments/assets/6d919a41-c2b6-41fe-8e69-5d41d9cd0379)
 
